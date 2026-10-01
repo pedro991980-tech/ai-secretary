@@ -3,43 +3,54 @@ import imaplib
 import email
 from email.header import decode_header
 from openai import OpenAI
-import json
+import os
 
-# 1. Configurazione della pagina Streamlit
+# 1. Configurazione della pagina
 st.set_page_config(
     page_title="AI Secretary Pro",
     page_icon="🤖",
-    layout="wide"
+    layout="centered"
 )
 
-# 2. UI/UX Moderna e Pulita (Stile Dashboard SaaS)
-st.markdown("""
+# 2. UI/UX Moderna, Accessibile e di Classe (Stile SaaS Enterprise)
+st.markdown(
+    """
     <style>
     .stApp {
-        background: #f8fafc;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         color: #0f172a;
+        font-size: 1.1rem;
     }
-    .clean-card {
-        background: #ffffff;
-        border-radius: 14px;
-        padding: 24px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-        border: 1px solid #e2e8f0;
+    .glass-card {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.4);
         margin-bottom: 20px;
     }
     .stButton>button {
-        border-radius: 10px;
+        border-radius: 12px;
         font-weight: 600;
         width: 100%;
+        background-color: #2563eb;
+        color: white;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        background-color: #1d4ed8;
     }
     h1, h2, h3 {
         color: #0f172a;
     }
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
-# Funzione di supporto per decodificare correttamente oggetti e mittenti email
+# Funzione di supporto sicura per decodificare gli header delle email
 def decode_email_header(header_value):
     if not header_value:
         return "Sconosciuto"
@@ -58,99 +69,91 @@ def decode_email_header(header_value):
             result.append(str(fragment))
     return "".join(result)
 
-# Inizializzazione dello stato di sessione
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "email_user" not in st.session_state:
-    st.session_state.email_user = ""
-if "email_password" not in st.session_state:
-    st.session_state.email_password = ""
-if "openai_key" not in st.session_state:
-    st.session_state.openai_key = ""
-
-
-# ==========================================
-# SEZIONE 1: LOGIN
-# ==========================================
-if not st.session_state.logged_in:
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("<div class='clean-card'>", unsafe_allow_html=True)
-        st.title("🤖 AI Secretary")
-        st.markdown("<p style='color: #64748b;'>Il tuo assistente email intelligente e sicuro.</p>", unsafe_allow_html=True)
-        
-        tab_face, tab_manual = st.tabs(["👤 Accesso Rapido", "🔑 Manuale"])
-        
-        with tab_face:
-            if st.button("✨ Entra con Passkey di Test", type="primary"):
-                st.session_state.logged_in = True
-                st.session_state.email_user = "nicolafronte@icloud.com"
-                st.session_state.email_password = "dwhh-jmgx-shmj-ulwa"
-                st.session_state.openai_key = "Sk-proj-_YoFIXvqucspPi-mpJl48E_HpF-h7B6VstS1RxKCju31Ys-92KT1nmRrlz1Nw6KRoJpyg6ZxQWT3BlbkFJGpqrsNEGkfshJjK7W7vuss3waLFvlGUIHTPEkZ_79qkroKxKu7l_MwfOMPhFR5lPrY04OBauwA"
-                st.rerun()
-
-        with tab_manual:
-            manual_email = st.text_input("Email", value="nicolafronte@icloud.com")
-            manual_pass = st.text_input("Password App", type="password", value="dwhh-jmgx-shmj-ulwa")
-            manual_key = st.text_input("OpenAI Key", type="password", value="Sk-proj-_YoFIXvqucspPi-mpJl48E_HpF-h7B6VstS1RxKCju31Ys-92KT1nmRrlz1Nw6KRoJpyg6ZxQWT3BlbkFJGpqrsNEGkfshJjK7W7vuss3waLFvlGUIHTPEkZ_79qkroKxKu7l_MwfOMPhFR5lPrY04OBauwA")
+# 3. Sidebar Professionale con Branding e Configurazione Universale (BYOK)
+with st.sidebar:
+    # Gestione sicura del logo aziendale / icona app
+    logo_path = "logo.png"
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=140)
+    else:
+        # Fallback intelligente se il file ha un nome differente nella directory
+        found_logo = False
+        for filename in os.listdir("."):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg')) and 'logo' in filename.lower():
+                st.image(filename, width=140)
+                found_logo = True
+                break
+        if not found_logo:
+            st.markdown("### 🤖 AI Secretary")
             
-            if st.button("Accedi al Sistema", type="primary"):
-                if manual_email and manual_pass and manual_key:
-                    st.session_state.logged_in = True
-                    st.session_state.email_user = manual_email.strip()
-                    st.session_state.email_password = manual_pass.strip()
-                    st.session_state.openai_key = manual_key.strip()
-                    st.rerun()
+    st.markdown("---")
+    st.subheader("Configurazione Account")
+    
+    # Input isolati e protetti nella sessione
+    user_email = st.text_input("Indirizzo Email", placeholder="nome@dominio.com")
+    user_password = st.text_input("Password per App", type="password", placeholder="Genera password specifica")
+    user_openai_key = st.text_input("OpenAI API Key", type="password", placeholder="sk-...")
+    
+    st.markdown("---")
+    st.caption("🔒 Crittografia TLS/SSL attiva. Le credenziali non vengono mai memorizzate in modo permanente sul server.")
+
+# Interfaccia Principale
+st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+st.title("🤖 AI Secretary - Dashboard")
+st.markdown("<p style='color: #64748b;'>Assistente di posta intelligente, sicuro e multi-provider.</p>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# Validazione dei prerequisiti di sicurezza (Zero-Trust configuration check)
+if not user_email or not user_password or not user_openai_key:
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.info("👋 **Benvenuto!** Per iniziare, inserisci i dati della tua casella di posta e la tua chiave OpenAI nella barra laterale a sinistra.")
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+
+# 4. Connessione IMAP Universale & Elaborazione Sicura
+st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+st.subheader("📬 Analisi Posta in Arrivo")
+
+if st.button("🚀 Avvia Scansione Intelligente", type="primary"):
+    with st.spinner("Connessione sicura al server di posta in corso..."):
+        try:
+            # Rilevamento automatico del server IMAP in base al dominio dell'utente (Supporto Universale)
+            email_lower = user_email.strip().lower()
+            if "gmail.com" in email_lower:
+                imap_server = "imap.gmail.com"
+            elif "icloud.com" in email_lower or "me.com" in email_lower:
+                imap_server = "imap.mail.me.com"
+            elif "outlook.com" in email_lower or "hotmail.com" in email_lower or "live.com" in email_lower:
+                imap_server = "imap-mail.outlook.com"
+            else:
+                imap_server = "imap.mail.me.com" # Fallback sicuro
+
+            # Connessione SSL blindata
+            mail = imaplib.IMAP4_SSL(imap_server)
+            mail.login(user_email.strip(), user_password.strip())
+            mail.select("inbox")
+
+            # Ricerca dei messaggi non letti
+            status, messages = mail.search(None, 'UNSEEN')
+            
+            if status != 'OK':
+                st.error("Impossibile recuperare i messaggi dal server IMAP.")
+            else:
+                raw_messages = messages[0]
+                if not raw_messages:
+                    st.success("Casella di posta pulita: nessuna nuova email da leggere.")
                 else:
-                    st.error("Inserisci tutti i campi obbligatori.")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-
-# ==========================================
-# SEZIONE 2: DASHBOARD PRINCIPALE
-# ==========================================
-else:
-    with st.sidebar:
-        st.write(f"👤 **Utente:** {st.session_state.email_user}")
-        st.divider()
-        if st.button("Disconnetti (Logout)"):
-            st.session_state.logged_in = False
-            st.rerun()
-
-    st.title("📊 Dashboard Gestione Email")
-    st.markdown("Benvenuto nel tuo pannello di controllo intelligente. Avvia l'analisi per smistare la posta, trovare le comunicazioni importanti ed eliminare lo spam.")
-
-    if st.button("🚀 Avvia Scansione e Pulizia Casella", type="primary"):
-        with st.spinner("Connessione al server di posta e analisi IA in corso..."):
-            try:
-                # Rilevamento automatico del server IMAP in base al dominio dell'utente
-                user_email_lower = st.session_state.email_user.lower()
-                if "gmail.com" in user_email_lower:
-                    imap_server = "imap.gmail.com"
-                elif "icloud.com" in user_email_lower or "me.com" in user_email_lower:
-                    imap_server = "imap.mail.me.com"
-                elif "outlook.com" in user_email_lower or "hotmail.com" in user_email_lower:
-                    imap_server = "imap-mail.outlook.com"
-                else:
-                    imap_server = "imap.mail.me.com" # Default di sicurezza
-
-                # Connessione IMAP universale
-                mail = imaplib.IMAP4_SSL(imap_server)
-                mail.login(st.session_state.email_user, st.session_state.email_password)
-                mail.select("inbox")
-
-                status, messages = mail.search(None, 'UNSEEN')
-                
-                inbox_emails = []
-                important_emails = []
-                spam_emails = []
-
-                if status == 'OK' and messages and messages[0]:
-                    email_ids = messages[0].split()
-                    if email_ids:
-                        client = OpenAI(api_key=st.session_state.openai_key)
+                    email_ids = raw_messages.split()
+                    if not email_ids:
+                        st.success("Casella di posta pulita: nessuna nuova email da leggere.")
+                    else:
+                        st.info(f"Trovate {len(email_ids)} nuove email da analizzare.")
                         
-                        for e_id in email_ids[-5:]:
+                        # Inizializzazione client OpenAI isolato per sessione
+                        client = OpenAI(api_key=user_openai_key.strip())
+                        
+                        # Analisi delle ultime email non lette (limitate a 3 per performance e stabilità)
+                        for e_id in email_ids[-3:]:
                             res, msg_data = mail.fetch(e_id, '(RFC822)')
                             for response_part in msg_data:
                                 if isinstance(response_part, tuple):
@@ -158,6 +161,7 @@ else:
                                     subject = decode_email_header(msg["Subject"])
                                     sender = decode_email_header(msg["From"])
                                     
+                                    # Estrazione sicura del corpo dell'email
                                     body = ""
                                     if msg.is_multipart():
                                         for part in msg.walk():
@@ -171,80 +175,26 @@ else:
                                         if payload:
                                             body = payload.decode(errors='ignore')
 
-                                    system_prompt = """
-                                    Sei un segretario virtuale intelligente. Analizza l'email e rispondi ESCLUSIVAMENTE in formato JSON con questa struttura esatta:
-                                    {
-                                        "categoria": "Importante" o "Spam" o "Normale",
-                                        "motivazione": "Breve spiegazione del perché",
-                                        "azione_consigliata": "Cosa deve fare l'utente"
-                                    }
-                                    """
-                                    user_prompt = f"Mittente: {sender}\nOggetto: {subject}\nTesto:\n{body[:800]}"
+                                    # Prompt di sistema per l'intelligenza artificiale
+                                    prompt = f"Mittente: {sender}\nOggetto: {subject}\nTesto:\n{body[:1000]}"
                                     
                                     response = client.chat.completions.create(
                                         model="gpt-4o-mini",
-                                        response_format={ "type": "json_object" },
                                         messages=[
-                                            {"role": "system", "content": system_prompt},
-                                            {"role": "user", "content": user_prompt}
+                                            {"role": "system", "content": "Sei un segretario esecutivo efficiente. Riassumi questa email in modo chiaro, conciso e indica immediatamente se richiede un'azione urgente."},
+                                            {"role": "user", "content": prompt}
                                         ]
                                     )
                                     
-                                    ai_result = json.loads(response.choices[0].message.content)
+                                    analysis = response.choices[0].message.content
                                     
-                                    email_item = {
-                                        "id": e_id,
-                                        "sender": sender,
-                                        "subject": subject,
-                                        "analysis": ai_result
-                                    }
-
-                                    if ai_result.get("categoria") == "Spam":
-                                        spam_emails.append(email_item)
-                                    elif ai_result.get("categoria") == "Importante":
-                                        important_emails.append(email_item)
-                                    else:
-                                        inbox_emails.append(email_item)
+                                    # Rendering pulito ed elegante dei risultati
+                                    with st.expander(f"📩 Da: {sender} — {subject}"):
+                                        st.markdown(analysis)
                                         
-                mail.logout()
-                
-                st.session_state.last_inbox = inbox_emails
-                st.session_state.last_important = important_emails
-                st.session_state.last_spam = spam_emails
-                st.success("Scansione completata con successo!")
+            mail.logout()
+            
+        except Exception as e:
+            st.error(f"Errore di autenticazione o connessione IMAP: {e}")
 
-            except Exception as e:
-                st.error(f"Errore durante l'elaborazione: {e}")
-
-    if "last_important" in st.session_state:
-        st.divider()
-        
-        tab1, tab2, tab3 = st.tabs([
-            f"🚨 Importanti ({len(st.session_state.last_important)})", 
-            f"📥 Posta Normale ({len(st.session_state.last_inbox)})", 
-            f"🗑️ Spam Pulito ({len(st.session_state.last_spam)})"
-        ])
-        
-        with tab1:
-            st.subheader("Email che richiedono attenzione immediata")
-            if not st.session_state.last_important:
-                st.info("Nessuna email importante trovata in questa sessione.")
-            for item in st.session_state.last_important:
-                with st.container():
-                    st.markdown(f"<div class='clean-card'><b>Mittente:</b> {item['sender']}<br><b>Oggetto:</b> {item['subject']}<br><hr style='margin: 10px 0;'>💬 <i>{item['analysis']['motivazione']}</i><br>⚡ <b>Azione:</b> {item['analysis']['azione_consigliata']}</div>", unsafe_allow_html=True)
-
-        with tab2:
-            st.subheader("Posta standard")
-            if not st.session_state.last_inbox:
-                st.info("Nessuna email normale da visualizzare.")
-            for item in st.session_state.last_inbox:
-                with st.container():
-                    st.markdown(f"<div class='clean-card'><b>Mittente:</b> {item['sender']}<br><b>Oggetto:</b> {item['subject']}<br>📝 {item['analysis']['motivazione']}</div>", unsafe_allow_html=True)
-
-        with tab3:
-            st.subheader("Email classificate come Spam e filtrate")
-            if not st.session_state.last_spam:
-                st.info("Nessun messaggio di spam individuato.")
-            for item in st.session_state.last_spam:
-                with st.container():
-                    st.markdown(f"<div class='clean-card' style='border-left: 4px solid #ef4444;'><b>Mittente:</b> {item['sender']}<br><b>Oggetto:</b> {item['subject']}<br>🚫 <b>Motivo blocco:</b> {item['analysis']['motivazione']}</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
