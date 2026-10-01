@@ -1,6 +1,7 @@
 import streamlit as st
 import imaplib
 import email
+from email.header import decode_header
 from openai import OpenAI
 import json
 
@@ -27,13 +28,6 @@ st.markdown("""
         border: 1px solid #e2e8f0;
         margin-bottom: 20px;
     }
-    .metric-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-    }
     .stButton>button {
         border-radius: 10px;
         font-weight: 600;
@@ -44,6 +38,25 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
+# Funzione di supporto per decodificare correttamente oggetti e mittenti email
+def decode_email_header(header_value):
+    if not header_value:
+        return "Sconosciuto"
+    decoded_fragments = decode_header(header_value)
+    result = []
+    for fragment, encoding in decoded_fragments:
+        if isinstance(fragment, bytes):
+            if encoding:
+                try:
+                    result.append(fragment.decode(encoding, errors="ignore"))
+                except:
+                    result.append(fragment.decode("utf-8", errors="ignore"))
+            else:
+                result.append(fragment.decode("utf-8", errors="ignore"))
+        else:
+            result.append(str(fragment))
+    return "".join(result)
 
 # Inizializzazione dello stato di sessione
 if "logged_in" not in st.session_state:
@@ -84,9 +97,9 @@ if not st.session_state.logged_in:
             if st.button("Accedi al Sistema", type="primary"):
                 if manual_email and manual_pass and manual_key:
                     st.session_state.logged_in = True
-                    st.session_state.email_user = manual_email
-                    st.session_state.email_password = manual_pass
-                    st.session_state.openai_key = manual_key
+                    st.session_state.email_user = manual_email.strip()
+                    st.session_state.email_password = manual_pass.strip()
+                    st.session_state.openai_key = manual_key.strip()
                     st.rerun()
                 else:
                     st.error("Inserisci tutti i campi obbligatori.")
@@ -97,7 +110,6 @@ if not st.session_state.logged_in:
 # SEZIONE 2: DASHBOARD PRINCIPALE
 # ==========================================
 else:
-    # Sidebar di navigazione e profilo
     with st.sidebar:
         st.write(f"👤 **Utente:** {st.session_state.email_user}")
         st.divider()
@@ -111,8 +123,19 @@ else:
     if st.button("🚀 Avvia Scansione e Pulizia Casella", type="primary"):
         with st.spinner("Connessione al server di posta e analisi IA in corso..."):
             try:
-                # Connessione IMAP (es. iCloud / Gmail)
-                mail = imaplib.IMAP4_SSL("imap.mail.me.com")
+                # Rilevamento automatico del server IMAP in base al dominio dell'utente
+                user_email_lower = st.session_state.email_user.lower()
+                if "gmail.com" in user_email_lower:
+                    imap_server = "imap.gmail.com"
+                elif "icloud.com" in user_email_lower or "me.com" in user_email_lower:
+                    imap_server = "imap.mail.me.com"
+                elif "outlook.com" in user_email_lower or "hotmail.com" in user_email_lower:
+                    imap_server = "imap-mail.outlook.com"
+                else:
+                    imap_server = "imap.mail.me.com" # Default di sicurezza
+
+                # Connessione IMAP universale
+                mail = imaplib.IMAP4_SSL(imap_server)
                 mail.login(st.session_state.email_user, st.session_state.email_password)
                 mail.select("inbox")
 
@@ -127,14 +150,13 @@ else:
                     if email_ids:
                         client = OpenAI(api_key=st.session_state.openai_key)
                         
-                        # Analizziamo gli ultimi messaggi non letti (es. ultimi 5)
                         for e_id in email_ids[-5:]:
                             res, msg_data = mail.fetch(e_id, '(RFC822)')
                             for response_part in msg_data:
                                 if isinstance(response_part, tuple):
                                     msg = email.message_from_bytes(response_part[1])
-                                    subject = str(msg["Subject"] or "Senza oggetto")
-                                    sender = str(msg["From"] or "Sconosciuto")
+                                    subject = decode_email_header(msg["Subject"])
+                                    sender = decode_email_header(msg["From"])
                                     
                                     body = ""
                                     if msg.is_multipart():
@@ -149,7 +171,6 @@ else:
                                         if payload:
                                             body = payload.decode(errors='ignore')
 
-                                    # Prompt strutturato per farsi restituire JSON dall'IA
                                     system_prompt = """
                                     Sei un segretario virtuale intelligente. Analizza l'email e rispondi ESCLUSIVAMENTE in formato JSON con questa struttura esatta:
                                     {
@@ -178,18 +199,15 @@ else:
                                         "analysis": ai_result
                                     }
 
-                                    # Smistamento in base alla categoria dell'IA
-                                    if ai_result["categoria"] == "Spam":
+                                    if ai_result.get("categoria") == "Spam":
                                         spam_emails.append(email_item)
-                                        # Esempio di automazione: potresti spostare la mail nello spam/cestino via IMAP
-                                    elif ai_result["categoria"] == "Importante":
+                                    elif ai_result.get("categoria") == "Importante":
                                         important_emails.append(email_item)
                                     else:
                                         inbox_emails.append(email_item)
                                         
                 mail.logout()
                 
-                # Salviamo i risultati nella sessione per mostrarli nelle tab
                 st.session_state.last_inbox = inbox_emails
                 st.session_state.last_important = important_emails
                 st.session_state.last_spam = spam_emails
@@ -198,7 +216,6 @@ else:
             except Exception as e:
                 st.error(f"Errore durante l'elaborazione: {e}")
 
-    # Se ci sono dati analizzati, mostriamo le sezioni a schede (Tab) moderne
     if "last_important" in st.session_state:
         st.divider()
         
